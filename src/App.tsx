@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-const A = '/assets/';
+const A = `${import.meta.env.BASE_URL}assets/`;
 
 type IconProps = { name: string; size?: number; className?: string };
 function Icon({ name, size = 16, className = '' }: IconProps) {
