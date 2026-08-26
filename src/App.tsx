@@ -369,6 +369,26 @@ function Delivered({ collapsed, record }: { collapsed: boolean; record: Dashboar
 const sectionNames = ['Basic Info', 'Cost', 'Carrier', 'Delivered'] as const;
 type SectionName = (typeof sectionNames)[number];
 
+const drawerSections = ['Base Info', 'Cost', 'Carrier', 'Delivered'] as const;
+type DrawerSection = (typeof drawerSections)[number];
+type TruckDrawerData = Record<DrawerSection, string[]>;
+type PendingDrawerAction = { type: 'close' } | { type: 'open'; row: DashboardRow };
+
+function createTruckDrawerData(): TruckDrawerData {
+  return {
+    'Base Info': Array.from({ length: 12 }, () => 'xxx'),
+    Cost: Array.from({ length: 12 }, () => 'xxx'),
+    Carrier: Array.from({ length: 12 }, () => 'xxx'),
+    Delivered: Array.from({ length: 12 }, () => 'xxx'),
+  };
+}
+
+function cloneTruckDrawerData(data: TruckDrawerData): TruckDrawerData {
+  return Object.fromEntries(
+    drawerSections.map((section) => [section, [...data[section]]]),
+  ) as TruckDrawerData;
+}
+
 const baseDashboardRows: DashboardRow[] = [
   {
     id: 1, page: 1, carrierRef: '38027691', shipment: 'Golden Row', container: 'SMCU1102456', deliveryType: 'Port → Job site', otr: 'Hotshot', carrier: 'Total Quality Logistics', eta: '2026-05-22', ata: '2026-08-22', sap: 'idle',
@@ -533,7 +553,7 @@ function Dropdown({ value, options, onChange, ariaLabel, className = '' }: {
   );
 }
 
-function DashboardTable({ rows, page, totalPages, searchDraft, shipmentFilter, otrFilter, onSearchDraftChange, onSearch, onShipmentFilter, onOtrFilter, onPage, onChange, onOpenRecord, onOpenContainer, onDelete, onSubmit }: {
+function DashboardTable({ rows, page, totalPages, searchDraft, shipmentFilter, otrFilter, onSearchDraftChange, onSearch, onShipmentFilter, onOtrFilter, onPage, onChange, onOpenRecord, onOpenContainer, onSubmit }: {
   rows: DashboardRow[];
   page: number;
   totalPages: number;
@@ -548,7 +568,6 @@ function DashboardTable({ rows, page, totalPages, searchDraft, shipmentFilter, o
   onChange: (id: number, field: keyof DashboardRow, value: string) => void;
   onOpenRecord: (row: DashboardRow) => void;
   onOpenContainer: (row: DashboardRow) => void;
-  onDelete: (row: DashboardRow) => void;
   onSubmit: (row: DashboardRow) => void;
 }) {
   return (
@@ -601,7 +620,7 @@ function DashboardTable({ rows, page, totalPages, searchDraft, shipmentFilter, o
       <div className="dashboard-table-wrap">
         <table className="dashboard-table">
           <thead><tr>
-            <th>Carrier Ref No.</th><th>Shipment</th><th>Container</th><th>Deliver Type</th><th>OTR</th><th>US OTR Carrier</th><th>ETA Job site for customer</th><th>ATA Job Site</th><th>SAP Delivery</th><th className="dashboard-action-column">Action</th>
+            <th>Carrier Ref No.</th><th>Shipment</th><th>Container</th><th>Deliver Type</th><th>OTR</th><th>US OTR Carrier</th><th>ETA Job site for customer</th><th>ATA Job Site</th><th>SAP Delivery</th>
           </tr></thead>
           <tbody>
             {rows.map((row) => (
@@ -620,10 +639,9 @@ function DashboardTable({ rows, page, totalPages, searchDraft, shipmentFilter, o
                   {row.sap === 'success' && <span className="sap-status success"><Icon name="check.svg" size={12} /> SAP synchronization successful.</span>}
                   {row.sap === 'error' && <span className="sap-status success"><Icon name="check.svg" size={12} /> SAP synchronization successful.</span>}
                 </td>
-                <td className="dashboard-action-column"><div className="inline-actions"><button onClick={() => onOpenRecord(row)}>View</button><button onClick={() => onDelete(row)}>Delete</button></div></td>
               </tr>
             ))}
-            {rows.length === 0 && <tr><td className="dashboard-empty" colSpan={10}>No truck records on this page.</td></tr>}
+            {rows.length === 0 && <tr><td className="dashboard-empty" colSpan={9}>No truck records on this page.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -650,6 +668,12 @@ export default function App() {
   const [shipmentFilter, setShipmentFilter] = useState('');
   const [otrFilter, setOtrFilter] = useState('');
   const [viewingRow, setViewingRow] = useState<DashboardRow | null>(null);
+  const [truckDrawerData, setTruckDrawerData] = useState<Record<number, TruckDrawerData>>({});
+  const [drawerDraft, setDrawerDraft] = useState<TruckDrawerData>(() => createTruckDrawerData());
+  const [drawerSavedSnapshot, setDrawerSavedSnapshot] = useState<TruckDrawerData>(() => createTruckDrawerData());
+  const [activeDrawerSection, setActiveDrawerSection] = useState<DrawerSection>('Base Info');
+  const [drawerSaveState, setDrawerSaveState] = useState<'idle' | 'saved'>('idle');
+  const [pendingDrawerAction, setPendingDrawerAction] = useState<PendingDrawerAction | null>(null);
   const [deletingRow, setDeletingRow] = useState<DashboardRow | null>(null);
   const [collapsed, setCollapsed] = useState<Record<SectionName, boolean>>({
     'Basic Info': false,
@@ -658,6 +682,11 @@ export default function App() {
     Delivered: false,
   });
   const inputRef = useRef<HTMLInputElement>(null);
+  const drawerContentRef = useRef<HTMLElement>(null);
+  const dirtyDrawerSections = drawerSections.filter((section) => (
+    drawerDraft[section].some((value, index) => value !== drawerSavedSnapshot[section][index])
+  ));
+  const drawerDirty = dirtyDrawerSections.length > 0;
 
   const notify = (message: string) => setToast(message);
   useEffect(() => {
@@ -665,6 +694,35 @@ export default function App() {
     const timer = window.setTimeout(() => setToast(''), 2600);
     return () => window.clearTimeout(timer);
   }, [toast]);
+
+  useEffect(() => {
+    if (drawerSaveState !== 'saved') return;
+    const timer = window.setTimeout(() => setDrawerSaveState('idle'), 2600);
+    return () => window.clearTimeout(timer);
+  }, [drawerSaveState]);
+
+  useEffect(() => {
+    if (!viewingRow) return;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || deletingRow) return;
+      if (pendingDrawerAction) {
+        setPendingDrawerAction(null);
+        return;
+      }
+      requestCloseDrawer();
+    };
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [viewingRow, deletingRow, pendingDrawerAction, drawerDirty]);
+
+  useEffect(() => {
+    drawerContentRef.current?.scrollTo({ top: 0 });
+  }, [activeDrawerSection]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -731,19 +789,79 @@ export default function App() {
     if (deletingIndex === activeTruck) nextIndex = Math.min(deletingIndex, remaining.length - 1);
     nextIndex = Math.max(0, Math.min(nextIndex, remaining.length - 1));
     setDashboardRows(remaining);
+    setTruckDrawerData((data) => {
+      const next = { ...data };
+      delete next[deletingRow.id];
+      return next;
+    });
     setActiveTruck(nextIndex);
     if (activeTab !== 'Dashboard' && remaining[nextIndex]) setActiveTab(remaining[nextIndex].shipment);
     notify(`Carrier reference ${deletingRow.carrierRef} was deleted.`);
+    if (viewingRow?.id === deletingRow.id) setViewingRow(null);
     setDeletingRow(null);
   }
 
-  function openCarrierRecord(row: DashboardRow) {
+  function openCarrierRecordNow(row: DashboardRow) {
     const index = dashboardRows.findIndex((item) => item.id === row.id);
     if (index < 0) return;
     setActiveTruck(index);
-    setActiveTab(row.shipment);
+    const saved = truckDrawerData[row.id] ?? createTruckDrawerData();
+    setDrawerDraft(cloneTruckDrawerData(saved));
+    setDrawerSavedSnapshot(cloneTruckDrawerData(saved));
+    setActiveDrawerSection('Base Info');
+    setDrawerSaveState('idle');
+    setViewingRow(row);
+  }
+
+  function openCarrierRecord(row: DashboardRow) {
+    if (viewingRow && viewingRow.id !== row.id && drawerDirty) {
+      setPendingDrawerAction({ type: 'open', row });
+      return;
+    }
+    openCarrierRecordNow(row);
+  }
+
+  function requestCloseDrawer() {
+    if (drawerDirty) {
+      setPendingDrawerAction({ type: 'close' });
+      return;
+    }
     setViewingRow(null);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function updateDrawerField(section: DrawerSection, index: number, value: string) {
+    setDrawerSaveState('idle');
+    setDrawerDraft((draft) => ({
+      ...draft,
+      [section]: draft[section].map((field, fieldIndex) => fieldIndex === index ? value : field),
+    }));
+  }
+
+  function persistDrawerChanges() {
+    if (!viewingRow) return false;
+    const saved = cloneTruckDrawerData(drawerDraft);
+    setTruckDrawerData((data) => ({
+      ...data,
+      [viewingRow.id]: saved,
+    }));
+    setDrawerSavedSnapshot(cloneTruckDrawerData(saved));
+    return true;
+  }
+
+  function saveDrawerChanges() {
+    if (!viewingRow || !persistDrawerChanges()) return;
+    setDrawerSaveState('saved');
+  }
+
+  function continuePendingDrawerAction(saveChanges: boolean) {
+    if (!pendingDrawerAction) return;
+    const action = pendingDrawerAction;
+    const currentCarrierRef = viewingRow?.carrierRef;
+    if (saveChanges) persistDrawerChanges();
+    setPendingDrawerAction(null);
+    if (action.type === 'open') openCarrierRecordNow(action.row);
+    else setViewingRow(null);
+    if (saveChanges && currentCarrierRef) notify(`Truck ${currentCarrierRef} updated successfully.`);
   }
 
   function selectCarrierRecord(index: number) {
@@ -856,7 +974,6 @@ export default function App() {
                 onChange={updateDashboardRow}
                 onOpenRecord={openCarrierRecord}
                 onOpenContainer={(row) => notify(`Redirecting to container ${row.container}.`)}
-                onDelete={setDeletingRow}
                 onSubmit={submitSap}
               />
             ) : <div className="details-layout">
@@ -931,21 +1048,95 @@ export default function App() {
         </div>
       </main>
       {viewingRow && (
-        <div className="modal-backdrop" role="presentation" onMouseDown={() => setViewingRow(null)}>
-          <section className="record-modal" role="dialog" aria-modal="true" aria-labelledby="record-title" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="modal-heading">
-              <div><span className="modal-eyebrow">Carrier reference</span><h2 id="record-title">{viewingRow.carrierRef}</h2></div>
-              <button onClick={() => setViewingRow(null)}>Close</button>
+        <div className="drawer-backdrop" role="presentation" onMouseDown={requestCloseDrawer}>
+          <aside className="truck-drawer" role="dialog" aria-modal="true" aria-labelledby="truck-drawer-title" onMouseDown={(event) => event.stopPropagation()}>
+            <header className="truck-drawer-header">
+              <div>
+                <span className="drawer-eyebrow">Truck information</span>
+                <div className="drawer-title-row">
+                  <h2 id="truck-drawer-title">{viewingRow.carrierRef}</h2>
+                </div>
+                <div className="drawer-summary">
+                  <span>{viewingRow.shipment}</span>
+                  <span>{viewingRow.container}</span>
+                </div>
+              </div>
+              <button className="drawer-close" onClick={requestCloseDrawer} aria-label="Close truck drawer" title="Close">×</button>
+            </header>
+            <div className="truck-drawer-main">
+              <nav className="truck-drawer-nav" role="tablist" aria-label="Truck information categories" aria-orientation="vertical">
+                {drawerSections.map((section) => {
+                  const isDirty = dirtyDrawerSections.includes(section);
+                  return (
+                  <button
+                    key={section}
+                    role="tab"
+                    aria-selected={activeDrawerSection === section}
+                    aria-controls={`drawer-panel-${section.toLowerCase().replace(' ', '-')}`}
+                    className={activeDrawerSection === section ? 'is-active' : ''}
+                    onClick={() => setActiveDrawerSection(section)}
+                  >
+                    <span className="drawer-nav-title">
+                      <strong>{section}</strong>
+                      {isDirty && <span className="drawer-section-dirty">Modified</span>}
+                    </span>
+                  </button>
+                );})}
+              </nav>
+              <section
+                ref={drawerContentRef}
+                className="truck-drawer-content"
+                id={`drawer-panel-${activeDrawerSection.toLowerCase().replace(' ', '-')}`}
+                role="tabpanel"
+                aria-label={activeDrawerSection}
+              >
+                <div className="truck-drawer-content-heading">
+                  <div>
+                    <h3>{activeDrawerSection}</h3>
+                    <p>Maintain the information for this truck.</p>
+                  </div>
+                </div>
+                <div className="truck-drawer-fields">
+                  {drawerDraft[activeDrawerSection].map((value, fieldIndex) => (
+                    <label className="truck-drawer-field" key={`${activeDrawerSection}-${fieldIndex}`}>
+                      <span>xxx</span>
+                      <input
+                        value={value}
+                        onChange={(event) => updateDrawerField(activeDrawerSection, fieldIndex, event.target.value)}
+                        aria-label={`${activeDrawerSection} xxx ${fieldIndex + 1}`}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </section>
             </div>
-            <div className="record-grid">
-              <Field label="Shipment">{viewingRow.shipment}</Field>
-              <Field label="Container"><span className="link-like">{viewingRow.container}</span></Field>
-              <Field label="Deliver Type">{viewingRow.deliveryType}</Field>
-              <Field label="OTR">{viewingRow.otr}</Field>
-              <Field label="US OTR Carrier">{viewingRow.carrier}</Field>
-              <Field label="ETA Job site">{viewingRow.eta}</Field>
-              <Field label="ATA Job site">{viewingRow.ata}</Field>
-              <Field label="SAP Delivery">{viewingRow.sap === 'success' ? 'Synchronized' : 'Pending'}</Field>
+            <footer className="truck-drawer-footer">
+              <button className="drawer-delete" onClick={() => setDeletingRow(viewingRow)}>Delete Truck</button>
+              <div className="drawer-footer-actions">
+                {drawerSaveState === 'saved' && (
+                  <span className="drawer-save-status" role="status">
+                    <Icon name="check.svg" size={14} />
+                    Saved
+                  </span>
+                )}
+                <button onClick={requestCloseDrawer}>Cancel</button>
+                <button className="drawer-save" disabled={!drawerDirty} onClick={saveDrawerChanges}>Save Changes</button>
+              </div>
+            </footer>
+          </aside>
+        </div>
+      )}
+      {pendingDrawerAction && viewingRow && (
+        <div className="modal-backdrop unsaved-modal-backdrop" role="presentation" onMouseDown={() => setPendingDrawerAction(null)}>
+          <section className="confirm-modal unsaved-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="unsaved-title" aria-describedby="unsaved-description" onMouseDown={(event) => event.stopPropagation()}>
+            <h2 id="unsaved-title">Unsaved changes</h2>
+            <p id="unsaved-description">
+              You changed <strong>{dirtyDrawerSections.join(', ')}</strong>. Save these changes before leaving this truck?
+            </p>
+            <div className="confirm-actions unsaved-confirm-actions">
+              <button onClick={() => setPendingDrawerAction(null)}>Keep Editing</button>
+              <button className="discard" onClick={() => continuePendingDrawerAction(false)}>Discard Changes</button>
+              <button className="primary" onClick={() => continuePendingDrawerAction(true)}>Save &amp; Continue</button>
             </div>
           </section>
         </div>
@@ -954,7 +1145,10 @@ export default function App() {
         <div className="modal-backdrop" role="presentation" onMouseDown={() => setDeletingRow(null)}>
           <section className="confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="delete-title" onMouseDown={(event) => event.stopPropagation()}>
             <h2 id="delete-title">Delete truck record?</h2>
-            <p>Carrier reference {deletingRow.carrierRef} will be removed from this dashboard.</p>
+            <p>
+              Carrier reference {deletingRow.carrierRef} will be removed from this dashboard.
+              {drawerDirty && viewingRow?.id === deletingRow.id && <> Unsaved changes in <strong>{dirtyDrawerSections.join(', ')}</strong> will also be discarded.</>}
+            </p>
             <div className="confirm-actions"><button onClick={() => setDeletingRow(null)}>Cancel</button><button className="danger" onClick={confirmDeleteDashboardRow}>Delete</button></div>
           </section>
         </div>
