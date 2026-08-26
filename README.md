@@ -1,4 +1,4 @@
-# Voltage Logistics Truck Prototype
+# Logistics Truck Prototype
 
 Interactive React/Vite prototype for the Voltage Logistics truck management workflow.
 
