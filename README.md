@@ -1,6 +1,6 @@
 # Logistics Truck Prototype
 
-Interactive React/Vite prototype for the Voltage Logistics truck management workflow.
+Interactive React/Vite prototype for the Logistics truck management workflow.
 
 ## Local development
 
