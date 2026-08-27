@@ -1920,6 +1920,8 @@ export default function App() {
       applyCarrierToRow(applyBaseInfoToRow(viewingRow, saved['Base Info']), saved.Carrier),
       saved.Delivered,
     );
+    const nextDraft = cloneTruckDrawerData(saved);
+    setDrawerDraft(nextDraft);
     setTruckDrawerData((data) => ({
       ...data,
       [viewingRow.id]: saved,
