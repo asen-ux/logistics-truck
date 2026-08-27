@@ -1705,6 +1705,7 @@ export default function App() {
   const [drawerSavedSnapshot, setDrawerSavedSnapshot] = useState<TruckDrawerData>(() => createTruckDrawerData());
   const [activeDrawerSection, setActiveDrawerSection] = useState<DrawerSection>('Base Info');
   const [drawerSaveState, setDrawerSaveState] = useState<'idle' | 'saved'>('idle');
+  const [sapUnlocked, setSapUnlocked] = useState(false);
   const [pendingDrawerAction, setPendingDrawerAction] = useState<PendingDrawerAction | null>(null);
   const [deletingRow, setDeletingRow] = useState<DashboardRow | null>(null);
   const [collapsed, setCollapsed] = useState<Record<SectionName, boolean>>({
@@ -1721,7 +1722,7 @@ export default function App() {
   const drawerDirty = dirtyDrawerSections.length > 0;
   const sapHint = 'SAP submission will be available after ATA confirmation at the job site.';
   const sapDisabled = !viewingRow
-    || drawerSaveState !== 'saved'
+    || !sapUnlocked
     || !drawerDraft.Delivered.ataJobSite
     || drawerDraft.Delivered.ataJobSite === '-'
     || viewingRow.sap === 'syncing'
@@ -1849,6 +1850,7 @@ export default function App() {
     setDrawerSavedSnapshot(cloneTruckDrawerData(saved));
     setActiveDrawerSection(section);
     setDrawerSaveState('idle');
+    setSapUnlocked(false);
     setViewingRow(row);
   }
 
@@ -1894,6 +1896,8 @@ export default function App() {
 
   function updateDeliveredDraft(next: DeliveredDraft) {
     setDrawerSaveState('idle');
+    const ata = next.ataJobSite.trim();
+    if (ata && ata !== '-') setSapUnlocked(true);
     setDrawerDraft((draft) => ({
       ...draft,
       Delivered: next,
