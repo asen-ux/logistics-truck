@@ -368,7 +368,7 @@ function Delivered({ collapsed, data }: { collapsed: boolean; data: DeliveredDra
 const sectionNames = ['Basic Info', 'Cost', 'Carrier', 'Delivered'] as const;
 type SectionName = (typeof sectionNames)[number];
 
-const drawerSections = ['Base Info', 'Cost', 'Carrier', 'Delivered'] as const;
+const drawerSections = ['Basic Info', 'Cost', 'Carrier', 'Delivered'] as const;
 type DrawerSection = (typeof drawerSections)[number];
 type PackageRow = {
   pallet: string;
@@ -440,7 +440,7 @@ type DeliveredDraft = {
   podReceivedDate: string;
 };
 type TruckDrawerData = {
-  'Base Info': BaseInfoDraft;
+  'Basic Info': BaseInfoDraft;
   Cost: CostDraft;
   Carrier: CarrierDraft;
   Delivered: DeliveredDraft;
@@ -642,7 +642,7 @@ function createDeliveredDraft(record?: DashboardRow): DeliveredDraft {
 
 function createTruckDrawerData(record?: DashboardRow): TruckDrawerData {
   return {
-    'Base Info': createBaseInfoDraft(record),
+    'Basic Info': createBaseInfoDraft(record),
     Cost: createCostDraft(),
     Carrier: createCarrierDraft(record),
     Delivered: createDeliveredDraft(record),
@@ -651,9 +651,9 @@ function createTruckDrawerData(record?: DashboardRow): TruckDrawerData {
 
 function cloneTruckDrawerData(data: TruckDrawerData): TruckDrawerData {
   return {
-    'Base Info': {
-      ...data['Base Info'],
-      packageList: data['Base Info'].packageList.map((row) => ({ ...row })),
+    'Basic Info': {
+      ...data['Basic Info'],
+      packageList: data['Basic Info'].packageList.map((row) => ({ ...row })),
     },
     Cost: {
       mode: data.Cost.mode,
@@ -1703,7 +1703,7 @@ export default function App() {
   const [truckDrawerData, setTruckDrawerData] = useState<Record<number, TruckDrawerData>>({});
   const [drawerDraft, setDrawerDraft] = useState<TruckDrawerData>(() => createTruckDrawerData());
   const [drawerSavedSnapshot, setDrawerSavedSnapshot] = useState<TruckDrawerData>(() => createTruckDrawerData());
-  const [activeDrawerSection, setActiveDrawerSection] = useState<DrawerSection>('Base Info');
+  const [activeDrawerSection, setActiveDrawerSection] = useState<DrawerSection>('Basic Info');
   const [drawerSaveState, setDrawerSaveState] = useState<'idle' | 'saved'>('idle');
   const [sapUnlocked, setSapUnlocked] = useState(false);
   const [pendingDrawerAction, setPendingDrawerAction] = useState<PendingDrawerAction | null>(null);
@@ -1841,7 +1841,7 @@ export default function App() {
     setDeletingRow(null);
   }
 
-  function openCarrierRecordNow(row: DashboardRow, section: DrawerSection = 'Base Info') {
+  function openCarrierRecordNow(row: DashboardRow, section: DrawerSection = 'Basic Info') {
     const index = dashboardRows.findIndex((item) => item.id === row.id);
     if (index < 0) return;
     setActiveTruck(index);
@@ -1854,7 +1854,7 @@ export default function App() {
     setViewingRow(row);
   }
 
-  function openCarrierRecord(row: DashboardRow, section: DrawerSection = 'Base Info') {
+  function openCarrierRecord(row: DashboardRow, section: DrawerSection = 'Basic Info') {
     if (viewingRow && viewingRow.id !== row.id && drawerDirty) {
       setPendingDrawerAction({ type: 'open', row, section });
       return;
@@ -1874,7 +1874,7 @@ export default function App() {
     setDrawerSaveState('idle');
     setDrawerDraft((draft) => ({
       ...draft,
-      'Base Info': next,
+      'Basic Info': next,
     }));
   }
 
@@ -1907,17 +1907,17 @@ export default function App() {
   function persistDrawerChanges() {
     if (!viewingRow) return false;
     const saved = cloneTruckDrawerData(drawerDraft);
-    const baseDirty = isDrawerSectionDirty('Base Info', drawerDraft, drawerSavedSnapshot);
+    const baseDirty = isDrawerSectionDirty('Basic Info', drawerDraft, drawerSavedSnapshot);
     const deliveredDirty = isDrawerSectionDirty('Delivered', drawerDraft, drawerSavedSnapshot);
-    if (saved['Base Info'].deliverType !== saved.Delivered.deliverType) {
+    if (saved['Basic Info'].deliverType !== saved.Delivered.deliverType) {
       if (deliveredDirty && !baseDirty) {
-        saved['Base Info'] = { ...saved['Base Info'], deliverType: saved.Delivered.deliverType };
+        saved['Basic Info'] = { ...saved['Basic Info'], deliverType: saved.Delivered.deliverType };
       } else if (baseDirty && !deliveredDirty) {
-        saved.Delivered = { ...saved.Delivered, deliverType: saved['Base Info'].deliverType };
+        saved.Delivered = { ...saved.Delivered, deliverType: saved['Basic Info'].deliverType };
       }
     }
     const nextRow = applyDeliveredToRow(
-      applyCarrierToRow(applyBaseInfoToRow(viewingRow, saved['Base Info']), saved.Carrier),
+      applyCarrierToRow(applyBaseInfoToRow(viewingRow, saved['Basic Info']), saved.Carrier),
       saved.Delivered,
     );
     const nextDraft = cloneTruckDrawerData(saved);
@@ -2121,7 +2121,7 @@ export default function App() {
                 </div>
 
                 <section data-section="Basic Info">
-                  <SectionHeader id="basic-info" title="Base Info" collapsed={collapsed['Basic Info']} onToggle={() => setCollapsed((s) => ({ ...s, 'Basic Info': !s['Basic Info'] }))} onEdit={() => openCarrierRecord(currentRecord)} />
+                  <SectionHeader id="basic-info" title="Basic Info" collapsed={collapsed['Basic Info']} onToggle={() => setCollapsed((s) => ({ ...s, 'Basic Info': !s['Basic Info'] }))} onEdit={() => openCarrierRecord(currentRecord)} />
                   <BaseInfo collapsed={collapsed['Basic Info']} record={currentRecord} />
                 </section>
                 <section data-section="Cost">
@@ -2190,7 +2190,7 @@ export default function App() {
                   <div>
                     <h3>{activeDrawerSection}</h3>
                     <p>
-                      {activeDrawerSection === 'Base Info'
+                      {activeDrawerSection === 'Basic Info'
                         ? 'Container, package list, loading list, and SAP delivery.'
                         : activeDrawerSection === 'Cost'
                           ? 'Auto allocation and manual allocation for this truck.'
@@ -2200,8 +2200,8 @@ export default function App() {
                     </p>
                   </div>
                 </div>
-                {activeDrawerSection === 'Base Info' ? (
-                  <BaseInfoEditor value={drawerDraft['Base Info']} onChange={updateBaseInfoDraft} />
+                {activeDrawerSection === 'Basic Info' ? (
+                  <BaseInfoEditor value={drawerDraft['Basic Info']} onChange={updateBaseInfoDraft} />
                 ) : activeDrawerSection === 'Cost' ? (
                   <CostEditor value={drawerDraft.Cost} onChange={updateCostDraft} />
                 ) : activeDrawerSection === 'Carrier' ? (
