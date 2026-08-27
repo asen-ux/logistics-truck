@@ -303,7 +303,7 @@ tbody tr:hover td { background: rgba(37, 105, 211, .035); }
 .drawer-title-row { display: flex; align-items: center; gap: 10px; }
 .drawer-truck-mark { width: 40px; height: 40px; display: grid; flex: 0 0 40px; place-items: center; border-radius: 10px; background: #edf4ff; }
 .app.dark .drawer-truck-mark { background: rgba(37, 105, 211, .16); }
-.drawer-title-row h2 { margin: 0; font-size: 24px; line-height: 1.25; }
+.drawer-title-row h2 { margin: 0; font-size: 20px; line-height: 1.25; }
 .drawer-shipment-tag { padding: 3px 8px; color: var(--secondary); border-radius: 4px; background: var(--subtle); font-size: 13px; line-height: 18px; white-space: nowrap; }
 .drawer-close { width: 36px; height: 36px; padding: 0; display: grid; flex: 0 0 auto; place-items: center; color: var(--muted); border: 0; border-radius: 6px; background: transparent; cursor: pointer; font-size: 28px; font-weight: 300; line-height: 1; }
 .drawer-close:hover { color: var(--text); background: var(--subtle); }
@@ -317,7 +317,7 @@ tbody tr:hover td { background: rgba(37, 105, 211, .035); }
 .drawer-section-dirty { padding: 2px 6px; color: #9a6700; border-radius: 10px; background: #fff4ce; font-size: 10px; font-weight: 600; line-height: 16px; }
 .truck-drawer-content { min-width: 0; padding: 24px 28px 32px; overflow-y: auto; animation: drawer-section-in .16s ease-out; }
 .truck-drawer-content-heading { margin-bottom: 22px; padding-bottom: 18px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--line); }
-.truck-drawer-content-heading h3 { margin: 0; font-size: 20px; font-weight: 600; }
+.truck-drawer-content-heading h3 { margin: 0; font-size: 16px; font-weight: 600; }
 .truck-drawer-content-heading p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
 .truck-drawer-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 16px; }
 .truck-drawer-field { min-width: 0; display: flex; flex-direction: column; gap: 7px; color: var(--secondary); font-size: 13px; }
