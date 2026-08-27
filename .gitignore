@@ -1,0 +1,9 @@
+node_modules/
+dist/
+work/
+*.tsbuildinfo
+.DS_Store
+
+
+qa-*.png
+design-qa.md
